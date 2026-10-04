@@ -120,7 +120,9 @@ def build():
     para(doc, "第 1 步 · 给两个信息：**采哪所学校**、**它的官方域名**。"
               "域名由 Claude 先用联网搜索确认为官方 *.edu.cn（**绝不瞎猜**）。")
     para(doc, "第 2 步 · 自动发现（只侦察、不下载）：Claude 会摸清该校材料挂在哪些栏目页、"
-              "附件直链是什么，并对每条候选**实测**可达性与文件类型，产出一份“候选确认表”给你过目。")
+              "附件直链是什么，并对每条候选**实测**可达性与文件类型，产出一份“候选确认表”给你过目。"
+              "如果目标材料挂在被反爬挡住的子站、自动爬不到，Claude 会改用“先联网搜索定位到挂着材料的那一页，"
+              "再交给脚本枚举下载”的精准方式——两种方式产出的台账完全一样。")
     para(doc, "第 3 步 · 一键采集 + 出台账：确认无误后，自动下载、校验完整性、按内容去重、"
               "分目录归档，并生成 Excel 台账与来源链接台账。")
     para(doc, "全程只需你给“哪所学校、哪类材料”，其余交给 Claude。", bold=True)
@@ -175,15 +177,45 @@ def build():
         ("能采任意学校吗？",
          "适用于任何 *.edu.cn 高校，不限地域。但“有多少公开”因校而异——先跑一轮自动发现，"
          "看候选确认表就知道实际能采到多少。"),
+        ("为什么会采到“看起来不像材料”的网页？",
+         "极少数情况下，新闻页或招生页正文里出现了“培养方案”“年度报告”等词，可能被误判。工具已内置"
+         "栏目黑名单与类型复核来尽量剔除；若仍发现不对的条目，告诉 Claude 用“指定承载页”方式重采即可，"
+         "不会影响已确认的文件。"),
         ("有些链接提示被拦 / 打不开？",
          "那是网站有反爬（WAF / 登录墙 / JS 挑战），属于真实边界，不是工具坏了。"
          "工具会如实记下“被拦”，不会伪造数据，也不会硬闯。"),
         ("链接会不会失效？",
          "高校栏目常改版。台账里每条链接都是采集当天实测可达的；用之前建议再核一次。"),
+        ("能在其它 Agent（Codex、WorkBuddy、千问办公）里用吗？",
+         "能。本 skill 带一个零依赖的 MCP 服务，装一次即可让这些客户端用同一套采集能力"
+         "（见第八节）。不需要你额外安装 Python 包。"),
     ]
     for q, a in qa:
         para(doc, "Q：" + q, bold=True, space_after=2)
         para(doc, "A：" + a, space_after=8)
+
+    # 八、在别的 Agent 里用
+    heading(doc, "八、在别的 Agent 里用（Claude Code / Codex / WorkBuddy / 千问办公）")
+    para(doc, "这套采集能力不止 Claude Code 能用。它带一个**零依赖**的 MCP 服务，"
+              "把同一套本事交给别的 Agent，**你不需要额外安装任何东西**。")
+    para(doc, "接入三步（以 Claude Code 为例）：")
+    for i, s in enumerate([
+        "在 skill 目录下运行：python scripts/mcp_server.py --print-config，"
+        "它会显示两行路径（解释器和脚本）。",
+        "接入：python scripts/mcp_server.py --install claude（Codex 用 --install codex，"
+        "WorkBuddy / 千问办公 用第一条打印出的信息在它们的「连接器 / MCP」里新建）。",
+        "在客户端里就能看到 harvest_school（一键采集）、harvest_pages（指定承载页采集）"
+        "等工具；说「采集 XX 大学的培养方案」即可。",
+    ], 1):
+        p = doc.add_paragraph()
+        r = p.add_run("%d. %s" % (i, s)); set_font(r)
+        p.paragraph_format.space_after = Pt(3)
+    bullet(doc, "长任务会自动转后台：工具先返回一个任务号，稍等片刻再取结果，"
+                "不会把客户端卡到超时。")
+    bullet(doc, "想让它更省心：把「某校挂着材料的那一页」网址直接告诉它，它就走精准直采，"
+                "比全站找更稳。")
+    para(doc, "注意：命令里的 Python 路径要与实际一致；若客户端找不到 Python，"
+              "就用 --print-config 打印的绝对路径。", size=10.5)
 
     add_page_number_footer(doc)
     doc.save(OUT)

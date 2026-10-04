@@ -49,10 +49,13 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # ----------------------------------------------------------------------------
 KW_TABLE = [
     ("培养方案", ["培养方案", "培养计划", "教学计划", "人才培养方案", "专业培养方案", "培养方案汇编"]),
-    ("专业介绍", ["专业介绍", "专业设置", "招生简章", "报考指南", "专业目录", "招生专业", "学科专业", "本科专业"]),
+    # 「专业介绍」只留专业本体词：删掉「招生简章/报考指南/招生专业」——那是招生宣传页
+    # （招生网 /newsCenter/article/ 里满屏这类锚文本，会整片误命中）
+    ("专业介绍", ["专业介绍", "专业设置", "专业目录", "学科专业", "本科专业"]),
     ("课程大纲", ["课程大纲", "教学大纲", "课程标准", "教学大纲汇编", "课程简介", "syllabus"]),
+    # 「年度报告」只认质量报告实词：删掉宽泛的「信息公开」，否则「科研项目信息公开」页会误命中
     ("年度报告", ["就业质量", "教学质量", "本科教学质量", "毕业生就业", "年度报告", "质量报告",
-                  "信息公开", "就业质量年度", "就业质量报告"]),
+                  "就业质量年度报告", "就业质量报告"]),
 ]
 ALL_KINDS = [k for k, _ in KW_TABLE]
 
@@ -74,6 +77,16 @@ ATT_EXT = (".pdf", ".doc", ".docx", ".xls", ".xlsx", ".rar", ".zip", ".7z")
 # 反爬/WAF 拦截页特征（命中即记 blocked，不再当正常栏目）
 BLOCK_MARKS = ("系统提示", "抱歉", "暂时无法访问", "请稍后重试", "验证码", "安全检查",
                "Just a moment", "Attention Required", "Access Denied")
+
+# 非材料栏目：新闻 / 通知公告 / 科研项目公开 / 党建思政 / 招生宣传。URL 路径命中即整页丢弃、不跟进。
+NEG_SECTION = re.compile(
+    r"/(?:xww|xwzh|xwdt|xwzx|xinwen|news|zhxw|tzgg|notice|gonggao|"
+    r"newscenter|article|zhaosheng|zsxx|bkzn|"
+    r"mkzxky|kyxm|dangjian|sizheng|llxx|dsxx)(?:/|\.|$)", re.I)
+# 明显非目标材料的附件（报名表 / 申请表 / 指南 / 联系表等）：命中即不纳入候选
+NEG_ATTACH = re.compile(
+    r"报名表|申请表|汇总表|登记表|推荐表|承诺书|联系方式|咨询电话|招生咨询|"
+    r"学校概况|考生须知|温馨提示|报考点|工作简报", re.I)
 
 
 def is_blocked(text):
@@ -184,33 +197,56 @@ CONFIRMED_KINDS = {"pdf": "pdf", "zip": "zip", "rar": "rar", "ole": "doc"}
 # Step2 导航评分
 # ----------------------------------------------------------------------------
 def classify(anchor, url):
-    """据锚文本 + URL 判材料类型。返回 (kind 或 None, 命中数)。"""
+    """据锚文本 + URL 判材料类型。返回 (kind 或 None, 命中数, 强信号?)。
+
+    "强信号" = 锚文本（栏目名）里就含关键词；仅 URL 路径碰巧含词算弱信号。
+    弱信号（如 URL 里带 /jxjh/ 而页面其实是新闻）不足以把整页判成材料。
+    """
     a, u = (anchor or "").lower(), url.lower()
-    best, hits = None, 0
+    best, hits, strong = None, 0, False
     for kind, kws in KW_TABLE:
-        n = sum(1 for k in kws if k in anchor or k.lower() in u)
+        n = sum(1 for k in kws if k in a or k.lower() in u)
         if n > hits:
             best, hits = kind, n
-    return best, hits
+            strong = any(k in a for k in kws)
+    return best, hits, strong
 
 
 def score_link(anchor, url, depth):
-    """给一个导航链接打分。≥2 才跟进（精度优先于召回）。"""
-    kind, hits = classify(anchor, url)
+    """给一个导航链接打分。≥2 才跟进（精度优先于召回）。返回 (分, kind, 强信号?)。"""
+    kind, hits, strong = classify(anchor, url)
     if not kind:
-        return 0, None
+        return 0, None, False
     s = 3 * min(hits, 2)
     p = urlparse(url).path
     if p.count("/") <= 1:                       # 顶层栏目页更可能是入口
         s += 1
     if re.search(r"更多|more$|下一页|next", (anchor or "").strip(), re.I):
         s -= 2                                   # 分页/更多是路标，不是目标
-    return s, kind
+    return s, kind, strong
 
 
 def title_of(text):
     m = re.search(r"<title[^>]*>(.*?)</title>", text, re.I | re.S)
     return re.sub(r"\s+", " ", C.decode(m.group(1))).strip() if m else ""
+
+
+def keep_as_hit(kind, depth, strong, url, kinds):
+    """该页是否作为「材料栏目页」收下（决定其页内附件继承哪种材料类型）。
+
+    三条必须同时成立，缺一即丢弃——防止把新闻/通知/科研公开页的正文措辞
+    当成材料，进而让其页内全部附件被错误继承（假货之源）：
+      · kind 属目标类型；depth>0（首页自身不当材料栏目）；
+      · strong=强信号（锚文本或标题里含关键词，非仅 URL 路径碰巧含词）；
+      · 不在 NEG_SECTION 黑名单栏目（新闻/通知/科研项目公开/党建）。
+    """
+    return bool(kind in kinds and depth > 0 and strong
+                and not NEG_SECTION.search(url) and not _is_root_url(url))
+
+
+def _is_root_url(u):
+    """站点首页 / 栏目根（路径为空或仅 /）——本身不是材料，登记为材料页必是假货。"""
+    return urlparse(u).path.strip("/") == ""
 
 
 def _looks_nav(full, anchor):
@@ -282,21 +318,21 @@ def crawl(apex, allowed, homes, kinds, work, max_pages=60, depth_max=2, log=prin
     """
     pri, gen = deque(), deque()
     for h in homes:
-        gen.append((h, 0, None))
+        gen.append((h, 0, None, False))
     seen, hits, pages, blocked = set(), [], [], []
     while (pri or gen) and len(pages) < max_pages:
         batch = []
         while (pri or gen) and len(batch) < workers and len(pages) + len(batch) < max_pages:
-            url, depth, kind = pri.popleft() if pri else gen.popleft()
+            url, depth, kind, strong = pri.popleft() if pri else gen.popleft()
             u = url.split("#")[0]
             if u in seen:
                 continue
             seen.add(u)
-            batch.append((u, depth, kind))
+            batch.append((u, depth, kind, strong))
         if not batch:
             break
         texts = _fetch_many([b[0] for b in batch], workers=workers)
-        for (u, depth, kind), raw in zip(batch, texts):
+        for (u, depth, kind, strong), raw in zip(batch, texts):
             text = C.decode(raw)
             if not text:
                 continue
@@ -305,12 +341,17 @@ def crawl(apex, allowed, homes, kinds, work, max_pages=60, depth_max=2, log=prin
                 continue
             pages.append(u)
             # 判类：链接锚文本 →（缺省时）页面 <title>（栏目名常写在标题里）
-            k_page = kind
-            if not k_page:
-                k2, _ = classify(title_of(text), "")
-                if k2:
-                    k_page = k2
-            if k_page in kinds and depth > 0:
+            k_page, strong_page = kind, strong
+            kt, ht, st = classify(title_of(text), u)
+            if st or ht >= 2:                    # 标题强命中 / 标题+URL 双命中 → 以标题判定为准
+                k_page, strong_page = kt, True
+            elif not k_page and kt:
+                k_page = kt
+            # 非材料栏目（新闻/通知/科研项目公开/党建）即便标题命中关键词也不收：
+            # 这类页里挂的"培养方案/年度报告"是正文措辞，不是可下载材料。
+            # 且须为强信号：仅 URL 路径碰巧含词的弱命中页（实为新闻/其他栏目）不收，
+            # 否则其页内所有附件会被错误继承成该类型 → 假货之源。
+            if keep_as_hit(k_page, depth, strong_page, u, kinds):
                 hits.append((u, k_page, text))
             if depth >= depth_max:
                 continue
@@ -318,17 +359,19 @@ def crawl(apex, allowed, homes, kinds, work, max_pages=60, depth_max=2, log=prin
                 full = href.split("#")[0]
                 if NEG.search(full) or NEG.search(anchor):
                     continue
+                if NEG_SECTION.search(full):       # 非材料栏目页：整页丢弃、不跟进
+                    continue
                 host = norm_host(urlparse(full).hostname)
                 if not same_apex(host, apex):
                     continue
                 low = full.split("?")[0].lower()
                 if low.endswith(ATT_EXT) or full in seen:
                     continue
-                s, k = score_link(anchor, full, depth)
+                s, k, strong = score_link(anchor, full, depth)
                 if k in kinds and s >= 2:
-                    pri.append((full, depth + 1, k))            # 关键词命中：优先
+                    pri.append((full, depth + 1, k, strong))    # 关键词命中：优先
                 elif depth == 0 and _looks_nav(full, anchor):
-                    gen.append((full, depth + 1, None))         # 顶层泛导航：次之
+                    gen.append((full, depth + 1, None, False))  # 顶层泛导航：次之
     return hits, pages, blocked
 
 
@@ -540,6 +583,17 @@ def discover_one(school, domain, out, kinds, no_subdomains=False, max_pages=60,
     for b in blocked[:5]:
         log("    ! 拦截：%s" % b)
 
+    return _finalize(school, norm_host(domain), apex, out, kinds, hits, pages, blocked,
+                     allowed, work, dry_run, log, workers, t0)
+
+
+def _finalize(school, domain, apex, out, kinds, hits, pages, blocked, allowed, work,
+              dry_run, log, workers, t0):
+    """Step3-6：由「命中栏目页」枚举附件 → 实探确认 → 落盘 →（可选）自动下载。
+
+    discover_one（全站爬）与 discover_pages（指定承载页）共用此段，
+    保证两条入口产出同一套台账口径。
+    """
     log("Step3 附件枚举……")
     cand = []          # (kind, url, page, anchor, ptitle)  可下载附件
     htmlc = []         # (kind, url, page, desc)            只登记的 HTML 材料页
@@ -550,9 +604,20 @@ def discover_one(school, domain, out, kinds, no_subdomains=False, max_pages=60,
         atts, htmls, ndetail = enum_attachments(page_url, text)
         log("    %s → 附件 %d，HTML 页 %d（%d 详情页）" % (page_url, len(atts), len(htmls), ndetail))
         for u, t in atts:
+            if NEG_ATTACH.search("%s %s" % (t or "", u)):    # 报名表/申请表/指南等非材料，跳过
+                continue
             cand.append((kind, u, page_url, t, ptitle))
         for u, t, sz in htmls:
-            htmlc.append((kind, u, page_url, t or ptitle, sz))
+            if NEG_ATTACH.search("%s %s" % (t or "", u)):
+                continue
+            if _is_root_url(u):          # 站点首页/栏目根：不是材料，登记即假货
+                continue
+            # 不整列继承承载页类型：按该页自身标题/锚文本重判，判不出就不登记
+            # （否则"年度报告"栏目里的"研究生招生简章"也会被登记成年度报告）
+            kt, ht, _st = classify("%s %s" % (t or "", ptitle), u)
+            if kt not in kinds:
+                continue
+            htmlc.append((kt, u, page_url, t or ptitle, sz))
     # 去重（忽略 http/https 差异：同一 URL 两协议会各出现一次）
     seen, uniq = set(), []
     for c in cand:
@@ -589,7 +654,7 @@ def discover_one(school, domain, out, kinds, no_subdomains=False, max_pages=60,
                          url=url, page=page, http=200, ctype="text/html", bytes=size))
     log("    确认 %d / HTML %d / 未定 %d" % (len(confirmed), len(html), len(unverified)))
 
-    ctx = dict(school=school, domain=norm_host(domain), apex=apex,
+    ctx = dict(school=school, domain=domain, apex=apex,
                allowed_hosts=allowed, pages=len(pages), hits=[h[0] for h in hits],
                blocked=blocked, kinds=kinds, confirmed=len(confirmed), html=len(html),
                unverified=len(unverified), elapsed=round(time.time() - t0, 1))
@@ -605,6 +670,59 @@ def discover_one(school, domain, out, kinds, no_subdomains=False, max_pages=60,
     if not dry_run:
         step6_auto(school, out, jobs, log=log)
     return ctx
+
+
+def discover_pages(school, domain, out, kinds, pages_spec, no_subdomains=False,
+                   dry_run=True, work=None, log=print, workers=8):
+    """指定承载页直采：由上层（Agent+WebSearch）定位承载页 URL，本函数只枚举其附件。
+
+    pages_spec: [(url, kind 或 None), ...]。kind=None 时按页面标题/URL 自动判类。
+    这是「全站爬不动时」的精准入口，等价手工 21_enum.py 的做法——把"找承载页"
+    交给会搜索的 Agent，把"枚举+实探+落盘"交给本函数，避免纯站内爬的假货。
+    """
+    t0 = time.time()
+    apex = apex_of(norm_host(domain))
+    if not apex.endswith(".edu.cn"):
+        raise ValueError("域名 %r 不是 *.edu.cn 官方域名（本工具只采官方源）。" % domain)
+    work = work or os.path.join(out, "_discover_tmp")
+    os.makedirs(work, exist_ok=True)
+
+    log("=" * 60)
+    log("学校：%s  域名：%s  apex：%s  【指定承载页模式】" % (school, norm_host(domain), apex))
+    log("指定承载页 %d 个，逐页抓取……" % len(pages_spec))
+
+    hits, pages, blocked = [], [], []
+    for url, kind in pages_spec:
+        full = url.split("#")[0]
+        host = norm_host(urlparse(full).hostname)
+        if not same_apex(host, apex):                    # 红线：只采官方 apex 内
+            log("    x 跨域，丢弃：%s" % full)
+            continue
+        raw = C.curl(full, maxt=30)
+        text = C.decode(raw)
+        if not text:
+            log("    x 抓取失败（不可达/空）：%s" % full)
+            continue
+        if is_blocked(text):
+            log("    ! 反爬拦截：%s" % full)
+            blocked.append(full)
+            continue
+        k = kind
+        if not k or k == "auto":
+            kt, ht, _st = classify(title_of(text), full)
+            k = kt if kt in kinds else None
+        if k not in kinds:
+            log("    x 判类失败（用 --kind 显式指定）：%s" % full)
+            continue
+        pages.append(full)
+        hits.append((full, k, text))
+        log("    + [%s] %s" % (k, full))
+
+    if not hits:
+        raise RuntimeError("指定承载页均不可用（不可达/跨域/判类失败）。请核对 URL 与 --kind。")
+
+    return _finalize(school, norm_host(domain), apex, out, kinds, hits, pages, blocked,
+                     [], work, dry_run, log, workers, t0)
 
 
 def step6_auto(school, out, jobs, log=print):
@@ -646,6 +764,11 @@ def main():
     ap.add_argument("--seeds", help="批量种子 json：[{school,domain,kinds?}]")
     ap.add_argument("--kinds", default=",".join(ALL_KINDS),
                     help="材料类型，逗号分隔（默认全部）")
+    ap.add_argument("--page", action="append", default=[],
+                    help="指定承载页 URL 直采（可重复）。用于全站爬不动时：先由 Agent+WebSearch "
+                         "定位承载页，再交给本工具枚举附件。与 --seeds 互斥。")
+    ap.add_argument("--kind", default="auto",
+                    help="配合 --page：指定这些承载页的材料类型（默认 auto=按标题/URL 自判）")
     ap.add_argument("--out", default="discover_out", help="产出目录")
     ap.add_argument("--max-pages", type=int, default=60, help="导航爬取页数上限")
     ap.add_argument("--no-subdomains", action="store_true", help="跳过子域探测")
@@ -658,6 +781,23 @@ def main():
 
     # 组装任务列表
     tasks = []
+    if a.page:
+        if a.seeds or not (a.school and a.domain):
+            sys.stderr.write("--page 需与 --school、--domain 同时给出（且不与 --seeds 同用）。\n")
+            sys.exit(2)
+        if a.kind != "auto" and a.kind not in ALL_KINDS:
+            sys.stderr.write("--kind 须为 %s 之一（或 auto）。\n" % "/".join(ALL_KINDS))
+            sys.exit(2)
+        pages_spec = [(u, a.kind) for u in a.page]
+        out = a.out
+        try:
+            discover_pages(a.school, a.domain, out, kinds, pages_spec,
+                           no_subdomains=a.no_subdomains, dry_run=not a.auto,
+                           workers=a.workers)
+        except Exception as e:
+            sys.stderr.write("指定承载页直采失败：%s\n" % e)
+            sys.exit(1)
+        return
     if a.seeds:
         seeds = C.load_json(a.seeds, [])
         if isinstance(seeds, dict):          # 允许 {"schools":[...], "_说明":...} 形态

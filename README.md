@@ -20,10 +20,24 @@ python skills/edu-material-harvest/scripts/discover.py --school <校名> --domai
 python skills/edu-material-harvest/scripts/discover.py --school <校名> --domain <域名> --auto   # 采集 + 出台账
 ```
 
+## 跨 Agent 可用（MCP）
+
+采集内核带一个**零依赖** stdio MCP 服务端，除 Claude Code 外，Codex / WorkBuddy /
+千问办公等支持 MCP 的客户端也能用**同一套能力**（工具、Resources、Prompts 齐全；
+长任务自动转后台，不会憋超时）：
+
+```
+python skills/edu-material-harvest/scripts/mcp_server.py --print-config   # 出连接信息
+python skills/edu-material-harvest/scripts/mcp_server.py --install claude # 或 codex
+```
+
+原理与四客户端接入法见：`skills/edu-material-harvest/references/09-Agent接入与MCP.md`
+
 ## 详细文档
 
 - 安装接入与故障对照：`skills/edu-material-harvest/README-安装与接入.md`
 - 自动发现逻辑（设计思路 / 判据 / 边界）：`skills/edu-material-harvest/references/08-自动发现逻辑.md`
+- 跨 Agent 接入与 MCP（架构 / 协议 / 工具 / 排障）：`skills/edu-material-harvest/references/09-Agent接入与MCP.md`
 - 使用教程：`skills/edu-material-harvest/使用教程_高校公开资料采集.docx`
 
 ## 红线

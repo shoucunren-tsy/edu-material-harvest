@@ -17,6 +17,13 @@
 
 你后续做分析时，能一键跳回学校官网核对原文。
 
+**两种发现方式**（都产出同一套台账）：
+
+- **全站自动爬**（省事）：给个域名，脚本自己爬遍主站和子域找材料。适合导航规整的站。
+- **指定承载页直采**（精准）：**先让 Claude 用联网搜索定位到"挂着材料的那一页"**，
+  再把那一页的网址交给脚本去枚举、下载。适合大站、或"全站爬出来一堆不是材料的页"的情况
+  （详见第四节第 2′ 步）。
+
 ---
 
 ## 二、前置条件
@@ -105,6 +112,31 @@ python scripts/discover.py --school 湖南大学 --domain hnu.edu.cn --kinds 年
 得到 `<out>/新增数据/湖南大学/年度报告/*.pdf` 与 `<out>/采集台账.xlsx`。
 **再跑一遍是幂等的**（已存在即跳过，不重复下载、不丢记录）。
 
+### 第 2′ 步（当第 2 步"零命中 / 一堆假货"时）· 指定承载页直采
+
+若第 2 步的结果是**什么都命中不到**（目标材料挂在被 WAF 挡的教务/信息公开子系统上），
+或者**命中的都不是材料**（爬到的是新闻页、招生简章），这时**别让脚本硬爬**，改走这条：
+
+**先让 Claude 联网搜索，找到"挂着材料的那一页"**（承载页），例如：
+「北京理工大学 培养方案」「XX 大学 就业质量年度报告」。确认那页网址后，交给脚本：
+
+```bash
+python scripts/discover.py --school 湖南大学 --domain hnu.edu.cn \
+    --page "<承载页网址>" --kind 培养方案
+# --kind 省略=auto（脚本按页面标题自动判断材料类型）
+# --page 可以写多个、重复写，一次枚举多页
+```
+
+看 `candidates.md` 拍板后同样加 `--auto` 一键下载出台账：
+
+```bash
+python scripts/discover.py --school 湖南大学 --domain hnu.edu.cn \
+    --page "<承载页网址>" --kind 培养方案 --auto
+```
+
+> 这条路线正是本 skill 实战里最靠谱的做法：**"找页"交给会搜索的 Claude，"枚举+下载+台账"
+> 交给脚本**。纯靠脚本瞎爬，容易被"关键词出现在新闻/招生语境里"骗到。
+
 > 批量：把学校写进 `references/schools_seed.example.json`（复制成 `schools_seed.json`），
 > 然后 `python scripts/discover.py --seeds schools_seed.json`。
 
@@ -121,9 +153,13 @@ python scripts/discover.py --school 湖南大学 --domain hnu.edu.cn --kinds 年
 | `apex、www 及已知子域均不可达` | 域名错 / 网络到不了 | 核对官方域名；`--no-subdomains` 试试；换网络 |
 | 结果里很多 `blocked` | 站点有 WAF / JS 挑战 | **真实边界**，不是 bug；换子域或手动补 |
 | `candidates.md` 里某些行没确认 | 返回 HTML 或状态异常 | 正常——它们只登记不下载；确认真文件才下 |
+| **一个材料都没命中** | 目标栏目的子域被 WAF 挡，爬不到 | 改走第四节**第 2′ 步**：先搜索定位承载页，再 `--page` 直采 |
+| **命中的一堆都不是材料**（新闻页、招生简章） | 关键词出现在错误语境的页面上 | 同上——用 `--page` 指定真承载页；引擎已内置栏目黑名单，但指定页更稳 |
 | 下载中途卡死 | 高校附件服务器中途停传 | curl 已带 `--speed-time 30 --speed-limit 20480` 自动中止 |
 | 中文输出乱码 | Windows GBK 终端 | `common.py` 已自动 utf-8；自建脚本用 `sys.stdout.reconfigure` |
 | 重复跑没新增 | 幂等生效 | 正常；已存在即跳过 |
+| MCP：客户端里工具列表为空 | `command` 路径错 / Python 不在 PATH | 用 `--print-config` 的**绝对路径**重填 |
+| MCP：客户端报"无效 JSON/断开" | 服务端 stdout 被污染 | 见 `references/09` §3，屏蔽顺序须最先 |
 
 ---
 
@@ -164,7 +200,39 @@ python scripts/discover.py --school 湖南大学 --domain hnu.edu.cn --kinds 年
 
 ---
 
-## 七、红线（本 skill 的底线，别改坏）
+## 七、在别的 Agent 里用（MCP）
+
+不只 Claude Code 能用。本 skill 带一个**零依赖**的 MCP 服务端，把同一套采集能力
+暴露给 **Codex / WorkBuddy / 千问办公** 等任何支持 MCP 的客户端——**你不需要 `pip install` 任何东西**。
+
+先看本机连接信息（**绝对路径版最稳**）：
+
+```bash
+python scripts/mcp_server.py --print-config
+```
+
+它会打印 `command`（Python 解释器绝对路径）与 `args`（脚本绝对路径），
+以及一段可直接粘贴的 `mcpServers` JSON。
+
+| 客户端 | 接入方式 |
+|---|---|
+| **Claude Code** | `python scripts/mcp_server.py --install claude`；验证 `claude mcp list` |
+| **Codex** | `python scripts/mcp_server.py --install codex`；验证 `codex mcp get edu-material-harvest` |
+| **WorkBuddy** | 在「连接器（MCP）」新建 stdio 服务器，命令/参数填 `--print-config` 的 `command`/`args` |
+| **千问办公** | 在其自定义工具 / MCP 入口，同样填 `command`/`args` |
+
+装上后，客户端里会出现这些工具：`env_check`、`harvest_school`（一键）、`harvest_many`（批量多校）、
+`harvest_pages`（承载页直采）、`discover_school`、`read_artifacts`、`job_wait` 等。**长任务自动转后台**，不会把客户端憋超时。
+
+> 两条入口在 MCP 里一样：`harvest_school` 走全站爬，`harvest_pages` 走承载页直采
+> （承载页网址由**客户端模型联网搜出来**再传进去）。原理与排障见 `references/09-Agent接入与MCP.md`。
+
+> ⚠️ `command` 要么是 PATH 里的 `python`，要么是**绝对路径**——客户端通常不继承你终端的 PATH，
+> 所以直接用 `--print-config` 给的绝对路径，别手写成 `python` 赌运气。
+
+---
+
+## 八、红线（本 skill 的底线，别改坏）
 
 1. **只采官方 `*.edu.cn` 免登录公开源**；登录墙后的一律放弃。
 2. **绝不猜域名、绝不编 URL**——每条链接都实测过。

@@ -46,7 +46,8 @@ def build_ledger(records, html_links, date):
         if not pg or pg in seen:
             continue
         seen.add(pg)
-        rows.append([r.get("school", ""), "教务处/学院栏目", "承载页", pg,
+        # 来源类型 = 该承载页承载的材料类型（与 HTML 行同义；不再写死"教务处/学院栏目"）
+        rows.append([r.get("school", ""), r.get("kind", ""), "承载页", pg,
                      (r.get("desc") or "")[:40], date])
     for h in (html_links or []):
         rows.append([h.get("school", ""), h.get("type", ""), h.get("form", "HTML正文页"),

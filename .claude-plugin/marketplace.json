@@ -8,8 +8,8 @@
     {
       "name": "edu-material-harvest",
       "source": "./",
-      "description": "自动发现并采集任意 *.edu.cn 高校的培养方案 / 专业介绍 / 课程大纲 / 年度报告，产出可溯源台账（下载直链 + 承载页）。",
-      "version": "1.0.0"
+      "description": "自动发现并采集任意 *.edu.cn 高校的培养方案 / 专业介绍 / 课程大纲 / 年度报告，产出可溯源台账（下载直链 + 承载页）；内置零依赖 MCP 服务端，跨 Agent 可用。",
+      "version": "2.0.0"
     }
   ]
 }
