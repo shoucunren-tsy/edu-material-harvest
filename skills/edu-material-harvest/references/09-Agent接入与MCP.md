@@ -228,9 +228,9 @@ codex mcp get edu-material-harvest   # 一律以此为准（Codex 读两份 conf
 给出的 `command` / `args`。
 
 ### 千问办公（QwenWork）
-桌面端左侧「**扩展 → 连接器**」→ 右上「**+ 添加**」→「**粘贴 JSON 配置**」，
-贴上 `--print-config` 给的 `mcpServers` JSON 即可（也可「手动填写配置」，服务器类型选
-**STDIO**，填 `command` / `args`）。**添加后须新建任务才生效**——老对话不会自动拿到新工具；
+桌面端左侧「**扩展 → 连接器**」→ 右上「**+ 添加**」，两个选项任选：
+「**填写/粘贴 JSON 配置**」贴上 `--print-config` 给的 `mcpServers` JSON；
+或「**手动添加配置**」，服务器类型选 **STDIO**，填 `command` / `args`。**添加后须新建任务才生效**——老对话不会自动拿到新工具；
 验证看「**连接器 → 已安装 → 自定义**」：开关打开 **≠** 连上，要能展开出工具列表才算真挂上。
 
 > ⚠️ **Python 路径坑**：`command` 要么是 PATH 里的 `python`，要么是**绝对路径**。
