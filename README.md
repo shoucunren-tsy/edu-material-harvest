@@ -42,16 +42,45 @@ python skills/edu-material-harvest/scripts/discover.py --seeds seeds.json --auto
 
 ## 跨 Agent 可用（MCP）
 
-采集内核带一个**零依赖** stdio MCP 服务端，除 Claude Code 外，Codex / WorkBuddy /
-千问办公等支持 MCP 的客户端也能用**同一套能力**（工具、Resources、Prompts 齐全；
-长任务自动转后台，不会憋超时）：
+采集内核带一个**零依赖** stdio MCP 服务端（纯 Python，**不用 `pip install` 任何东西**），
+除 Claude Code 外，Codex / WorkBuddy / 千问办公 / Claude Desktop / Cursor / Cline 等任何支持
+MCP 的客户端都能挂上**同一套采集能力**（工具、Resources、Prompts 齐全；长任务自动转后台，不会憋超时）。
 
-```
-python skills/edu-material-harvest/scripts/mcp_server.py --print-config   # 出连接信息
-python skills/edu-material-harvest/scripts/mcp_server.py --install claude # 或 codex
+### 安装：把这段 JSON 贴进客户端的 MCP 配置
+
+```json
+{
+  "mcpServers": {
+    "edu-material-harvest": {
+      "command": "python",
+      "args": [
+        "<本仓库克隆到本地的绝对路径>/skills/edu-material-harvest/scripts/mcp_server.py"
+      ]
+    }
+  }
+}
 ```
 
-原理与四客户端接入法见：`skills/edu-material-harvest/references/09-Agent接入与MCP.md`
+按你的机器改两处：
+
+- `command`：填 `python` 即可；**若客户端找不到 python**（客户端通常不继承你终端的 PATH），
+  换成解释器的**绝对路径**，例如 `C:/Python312/python.exe`。
+- `args[0]`：换成你 clone 后 `mcp_server.py` 的**绝对路径**（正斜杠 `/` 或反斜杠 `\\` 都行）。
+
+> **最省事的做法**：clone 后跑一次自带命令，它会**自动打印填好你本机绝对路径的同一段 JSON**，
+> 直接复制粘贴：
+>
+> ```
+> python skills/edu-material-harvest/scripts/mcp_server.py --print-config
+> ```
+>
+> 其中 Claude Code / Codex 还能一键写配置：
+> `--install claude`（或 `--install codex`），Codex 用 `codex mcp get edu-material-harvest` 验证。
+
+挂上后客户端里会出现 `env_check`、`region_seeds`（地区名单）、`harvest_school`（一键）、
+`harvest_many`（批量多校）、`harvest_pages`（承载页直采）、`build_ledger`、`read_artifacts`、
+`job_wait` 等工具。原理与四客户端接入法见：
+`skills/edu-material-harvest/references/09-Agent接入与MCP.md`
 
 ## 详细文档
 

@@ -214,6 +214,24 @@ python scripts/mcp_server.py --print-config
 它会打印 `command`（Python 解释器绝对路径）与 `args`（脚本绝对路径），
 以及一段可直接粘贴的 `mcpServers` JSON。
 
+**要粘的 JSON 长这样**（把两处按你的机器改掉——`command` 若 `python` 不在 PATH 就换解释器
+绝对路径，`args[0]` 换成你 clone 后脚本的绝对路径）：
+
+```json
+{
+  "mcpServers": {
+    "edu-material-harvest": {
+      "command": "python",
+      "args": [
+        "<仓库绝对路径>/skills/edu-material-harvest/scripts/mcp_server.py"
+      ]
+    }
+  }
+}
+```
+
+> 嫌手改麻烦：直接复制 `--print-config` 打出来的那份——它已把上面两处替换成本机绝对路径。
+
 | 客户端 | 接入方式 |
 |---|---|
 | **Claude Code** | `python scripts/mcp_server.py --install claude`；验证 `claude mcp list` |
