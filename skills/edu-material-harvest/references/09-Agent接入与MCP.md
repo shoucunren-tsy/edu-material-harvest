@@ -227,8 +227,11 @@ codex mcp get edu-material-harvest   # 一律以此为准（Codex 读两份 conf
 在 **「连接器（MCP）」** 里新建一个 stdio 服务器，`命令 / 参数` 填 `--print-config`
 给出的 `command` / `args`。
 
-### 千问办公
-在其**自定义工具 / MCP 入口**里新建 stdio 服务器，同样填 `command` / `args`。
+### 千问办公（QwenWork）
+桌面端左侧「**扩展 → 连接器**」→ 右上「**+ 添加**」→「**粘贴 JSON 配置**」，
+贴上 `--print-config` 给的 `mcpServers` JSON 即可（也可「手动填写配置」，服务器类型选
+**STDIO**，填 `command` / `args`）。**添加后须新建任务才生效**——老对话不会自动拿到新工具；
+验证看「**连接器 → 已安装 → 自定义**」：开关打开 **≠** 连上，要能展开出工具列表才算真挂上。
 
 > ⚠️ **Python 路径坑**：`command` 要么是 PATH 里的 `python`，要么是**绝对路径**。
 > 客户端通常不继承你终端的 PATH——**最稳是直接用 `--print-config` 的绝对路径**。

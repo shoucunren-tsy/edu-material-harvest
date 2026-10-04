@@ -77,6 +77,16 @@ MCP 的客户端都能挂上**同一套采集能力**（工具、Resources、Pro
 > 其中 Claude Code / Codex 还能一键写配置：
 > `--install claude`（或 `--install codex`），Codex 用 `codex mcp get edu-material-harvest` 验证。
 
+各客户端入口一览：
+
+| 客户端 | 怎么装 |
+|---|---|
+| **Claude Code** | `python .../mcp_server.py --install claude`（或 `/plugin` 装插件自动挂载） |
+| **Codex** | `python .../mcp_server.py --install codex`，验证 `codex mcp get edu-material-harvest` |
+| **WorkBuddy** | 「连接器（MCP）」新建 stdio 服务器，填上面的 `command` / `args` |
+| **千问办公（QwenWork）** | 桌面端「扩展 → 连接器 → + 添加 → **粘贴 JSON 配置**」贴上上面的 JSON（或「手动填写配置」选 STDIO） |
+| **Claude Desktop / Cursor / Cline** | 在各自 MCP 配置里贴上面的 `mcpServers` JSON |
+
 挂上后客户端里会出现 `env_check`、`region_seeds`（地区名单）、`harvest_school`（一键）、
 `harvest_many`（批量多校）、`harvest_pages`（承载页直采）、`build_ledger`、`read_artifacts`、
 `job_wait` 等工具。原理与四客户端接入法见：

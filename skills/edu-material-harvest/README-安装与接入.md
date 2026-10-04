@@ -237,7 +237,7 @@ python scripts/mcp_server.py --print-config
 | **Claude Code** | `python scripts/mcp_server.py --install claude`；验证 `claude mcp list` |
 | **Codex** | `python scripts/mcp_server.py --install codex`；验证 `codex mcp get edu-material-harvest` |
 | **WorkBuddy** | 在「连接器（MCP）」新建 stdio 服务器，命令/参数填 `--print-config` 的 `command`/`args` |
-| **千问办公** | 在其自定义工具 / MCP 入口，同样填 `command`/`args` |
+| **千问办公（QwenWork）** | 桌面端「**扩展 → 连接器 → + 添加 → 粘贴 JSON 配置**」贴上面的 JSON；或「手动填写配置」选 **STDIO** 填 `command`/`args`。**添加后须新建任务才生效**，验证看「连接器 → 已安装 → 自定义」能展开出工具列表 |
 
 装上后，客户端里会出现这些工具：`env_check`、`harvest_school`（一键）、`harvest_many`（批量多校）、
 `harvest_pages`（承载页直采）、`discover_school`、`read_artifacts`、`job_wait` 等。**长任务自动转后台**，不会把客户端憋超时。
