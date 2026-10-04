@@ -89,6 +89,8 @@ INSTRUCTIONS = (
     "· 若全站爬被子域 WAF 挡、或爬出假货：自己联网搜到「挂着材料的那一页」URL，"
     "改用 harvest_pages(school, domain, pages)。\n"
     "· 多校批量：harvest_many(schools=[{school,domain}, ...])。\n"
+    "· 按地区批量：region_seeds(province=\"湖南\", preset=\"985\") 生成 seeds.json（纯本地、"
+    "出口径边界与待补域名清单）→ 你联网补域名 → harvest_many。\n"
     "· prompt \"edu:harvest-school\" 提供了照念即用的完整配方。\n"
     "红线：绝不猜域名；绝不编 URL；只采官方免登录公开源。"
 )
@@ -102,6 +104,7 @@ import env as ENV         # noqa: E402
 import discover as D      # noqa: E402
 import download as DL     # noqa: E402
 import report as R        # noqa: E402
+import region_seeds as RS # noqa: E402  （地区名单生成：①层，纯函数，不联网）
 
 
 # ============================================================================
@@ -402,6 +405,120 @@ def _tool_env_check(_a):
     return _tool_ok("\n".join(lines))
 
 
+def _as_list(v):
+    """把标量/数组归一到字符串列表（弱模型可能只传一个字符串）。"""
+    if v is None:
+        return []
+    if isinstance(v, str):
+        return [v] if v.strip() else []
+    if isinstance(v, list):
+        return [str(x).strip() for x in v if str(x).strip()]
+    return []
+
+
+def _inline_domains(obj):
+    """把内联域名映射（dict 或 list）转成 {校名: (domain, source)}，与 region_seeds.load_domains 同形。"""
+    out = {}
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if isinstance(k, str) and isinstance(v, str) and v.strip():
+                out[k.strip()] = (RS.norm_domain(v), "user")
+    elif isinstance(obj, list):
+        for it in obj:
+            if isinstance(it, dict) and it.get("school") and it.get("domain"):
+                out[str(it["school"]).strip()] = (
+                    RS.norm_domain(str(it["domain"])), it.get("source") or "user")
+    return out
+
+
+def _tool_region_seeds(a):
+    """地区名单生成（①层）：省/城市/层次/预设 → seeds.json。纯本地、不联网、不猜域名。
+
+    注意：**不直接调 RS.load_data / RS.load_domains** —— 那两支失败时会 sys.exit(2)，
+    在常驻服务端里等于杀进程；改为自己用 C.load_json 读并校验，只复用纯函数 build/norm_domain。
+    """
+    provinces = _as_list(a.get("province"))
+    cities = _as_list(a.get("city"))
+    levels = _as_list(a.get("level"))
+    preset = a.get("preset")
+    names_file = a.get("names_file")
+    data_path = a.get("data") or RS.DEFAULT_DATA
+    out = a.get("out") or os.path.join(os.getcwd(), "region_seeds.json")
+
+    if not (provinces or cities or preset or names_file):
+        return _tool_err("至少要给筛选条件之一：province / city / preset(985|211) / names_file。"
+                         "（不给条件＝全表 2952 校，通常不是本意。）")
+
+    doc = C.load_json(data_path, None)
+    if not doc or not isinstance(doc.get("schools"), list):
+        return _tool_err("名单数据不可用：%s（可用 data 参数指向其它名单 JSON）。" % data_path)
+
+    try:
+        preset_names, preset_label = RS.load_preset(preset, names_file)
+    except Exception as e:
+        return _tool_err("读取预设/自定义名单失败：%s" % e)
+    if (preset or names_file) and not preset_names:
+        return _tool_err("预设/自定义名单为空或不可读：preset=%r names_file=%r" % (preset, names_file))
+
+    dom_arg = a.get("domains")
+    if isinstance(dom_arg, str) and dom_arg.strip():
+        raw = C.load_json(dom_arg, None)
+        if raw is None:
+            return _tool_err("域名文件不可读（需 JSON）：%s" % dom_arg)
+        domains = _inline_domains(raw)
+    elif isinstance(dom_arg, (dict, list)):
+        domains = _inline_domains(dom_arg)
+    else:
+        domains = {}
+
+    try:
+        result, unmatched = RS.build(doc, provinces, levels, preset_names,
+                                     preset_label, cities, domains)
+        C.save_json(result, out)
+        if a.get("csv"):
+            RS.write_csv(result["schools"], os.path.splitext(out)[0] + ".csv")
+    except Exception as e:
+        return _tool_err("生成名单失败：%s" % e)
+
+    m = result["_meta"]
+    rows = result["schools"]
+    pending = [r["school"] for r in rows if not r["domain"]]
+
+    filt = "、".join(x for x in [
+        ("省=" + "/".join(m["filter"]["province"])) if m["filter"]["province"] else "",
+        ("市=" + "/".join(m["filter"]["city"])) if m["filter"]["city"] else "",
+        ("层次=" + "/".join(m["filter"]["level"])) if m["filter"]["level"] else "",
+        ("预设=" + m["filter"]["preset"]) if m["filter"]["preset"] else "",
+    ] if x)
+
+    L = ["地区名单已生成 → %s" % out,
+         "命中 %d 校%s；含域名 %d 校，待补域名 %d 校。"
+         % (m["count"], ("（%s）" % filt) if filt else "", m["with_domain"], len(pending)),
+         "",
+         "⚠️ 名单口径（务必知悉）：",
+         "  · 本名单＝教育部《全国普通高等学校名单》，仅普通高校（本科+专科）。",
+         "  · 不含成人高校（教育部并列发布的另一份名单）——默认不采；确需可经 data / names_file 补入。",
+         "  · 不含军队院校（国防科技大学等）——按 985/211 筛时在下方「未匹配」列出，不静默丢。",
+         "  边界详见 resource edu://ref/10（references/10-地区批量.md §3.1）。"]
+    if unmatched:
+        L += ["", "未匹配（多为军校）：%s" % "、".join(unmatched)]
+    L.append("")
+    if pending:
+        show = pending[:12]
+        more = "" if len(pending) <= 12 else " 等 %d 校" % len(pending)
+        L += ["下一步：",
+              "  1) 对「待补域名」的学校，用联网搜索逐校解析官方 *.edu.cn（绝不猜），"
+              "证据页 URL 写入 domain_source=\"agent:<URL>\"；",
+              "  2) 调 harvest_many(schools=[{school,domain,…}], out=…) 逐校采集。",
+              "待补域名（%d 校，前 12）：%s%s" % (len(pending), "、".join(show), more)]
+    else:
+        L.append("下一步：全部学校已带域名 → 直接 harvest_many(schools=…, out=…) 逐校采集。")
+
+    return _tool_ok("\n".join(L), structured={
+        "out": out, "count": m["count"], "with_domain": m["with_domain"],
+        "pending": len(pending), "unmatched": unmatched})
+
+
 def _tool_harvest_school(a, dry=False, tool="harvest_school"):
     school = a.get("school")
     domain = a.get("domain")
@@ -665,6 +782,28 @@ TOOLS = [
                     "**第一个该调的工具**；缺依赖当场说清，避免后面「跑完啥也没有」。",
      "inputSchema": _obj({})},
 
+    {"name": "region_seeds",
+     "description": "【地区批量·第一步】按 省/城市/层次/预设(985·211) 或自定义名单生成高校 seeds.json"
+                    "（纯本地、不联网、不猜域名、可复现）。至少给一个筛选条件。输出会列「待补域名」"
+                    "的学校——需你联网搜官方 *.edu.cn 补上，再交 harvest_many 采集。"
+                    "名单口径：仅普通高校（不含成人高校与军队院校），详见 resource edu://ref/10。",
+     "inputSchema": _obj({
+         "province": {"type": "array", "items": {"type": "string"},
+                      "description": "省级，可多个：[\"湖南\"] 或 [\"湖北\",\"湖南\"]（简写即可）。也接受单个字符串。"},
+         "city": {"type": "array", "items": {"type": "string"},
+                  "description": "所在地城市，精确匹配，可多个。可选。"},
+         "level": {"type": "array", "items": {"type": "string", "enum": ["本科", "专科"]},
+                   "description": "办学层次，可多个。可选。"},
+         "preset": {"type": "string", "enum": ["985", "211"], "description": "预设名单。可选。"},
+         "names_file": {"type": "string",
+                        "description": "自定义名单文件路径（每行一校名，或 JSON {\"names\":[…]}）。可选。"},
+         "domains": {"description": "用户提供的域名映射：文件路径（字符串），或内联 "
+                     "{\"湖南大学\":\"hnu.edu.cn\"} / [{\"school\":\"湖南大学\",\"domain\":\"hnu.edu.cn\",\"source\":\"…\"}]。可选。"},
+         "data": {"type": "string",
+                  "description": "覆盖内置名单 JSON 路径（缺省=教育部《全国普通高等学校名单》）。"},
+         "csv": {"type": "boolean", "description": "同时输出同名 .csv。默认 false。"},
+         "out": {"type": "string",
+                 "description": "输出 seeds.json 路径（缺省=<当前目录>/region_seeds.json）。"}})},
     {"name": "harvest_school",
      "description": "【一键·推荐】给定学校名 + 官方域名，自动完成：全站发现 → 下载 → "
                     "去重 → 出台账。适合导航规整的站。返回 job_id，"
@@ -765,6 +904,7 @@ TOOLS = [
 
 TOOL_FUNCS = {
     "env_check": _tool_env_check,
+    "region_seeds": _tool_region_seeds,
     "harvest_school": _tool_harvest_school,
     "harvest_many": _tool_harvest_many,
     "harvest_pages": _tool_harvest_pages,

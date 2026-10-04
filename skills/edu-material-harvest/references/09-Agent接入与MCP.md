@@ -117,6 +117,7 @@
 | 工具 | 入参 | 返回 | 说明 |
 |---|---|---|---|
 | `env_check` | — | 依赖探测表 | 只读，**第一个该调的**；缺依赖当场说清 |
+| `region_seeds` | `province?, city?, level?, preset?, names_file?, domains?, data?, csv?, out?` | 文本 + `structured` | 同步；**地区批量第一步**：省/985·211 或自定义名单 → `seeds.json`（纯本地、不联网、不猜域名）。输出内嵌**名单口径边界**与「待补域名」清单 |
 | `harvest_school` | `school, domain, kinds?, auto?, no_subdomains?, max_pages?, workers?, out?` | `job_id` | **一键**：发现→(auto)下载→台账。= 官方推荐整跑 |
 | `harvest_many` | `schools:[{school,domain,kinds?},…], kinds?, auto?, …` | `job_id` | **批量多校**：逐校发现→(auto)下载→台账，各校产出到 `<out>/<校名>/` |
 | `harvest_pages` | `school, domain, pages:[{url,kind?}], auto?, out?` | `job_id` | **承载页直采**（WAF 挡/假货多时用） |
@@ -130,6 +131,9 @@
 
 设计取舍：
 
+- **`region_seeds` 是同步快工具**（纯本地、毫秒级，不返 `job_id`）：它是**唯一**把「名单口径边界」
+  写进**工具输出**的地方——供**只认 tools、不读 resources** 的客户端也能拿到边界与配方
+  （配 `edu://ref/10` 双保险）。
 - **一键工具（`harvest_*`）是给弱模型的主路径**——少决策、少出错。
 - **所有 `harvest_*` / `discover_*` / `download_materials` 都是异步的**，立即回 `job_id`；
   摘要经 `job_wait` 取。这样无论站点多慢，客户端都不会因超时把任务掐断。
@@ -172,7 +176,7 @@
 - **Resources**（`resources/list` 可被客户端自动加载）：
   `edu://manual`（SKILL.md）、`edu://ref/00`（纪律）、`edu://ref/05`（检索反爬）、
   `edu://ref/07`（来源清单）、`edu://ref/08`（引擎逻辑）、`edu://ref/01..04`（四类材料）、
-  `edu://ref/09`（本文）。
+  `edu://ref/09`（本文）、`edu://ref/10`（地区批量 + 名单口径边界）。
 - **Prompt `edu:harvest-school`**：入参 `{school, domain, kinds?}`，直接返回**有序调用配方**
   （"先 env_check → harvest_school/harvest_pages → job_wait → read_artifacts('candidates'）"）。
   弱模型照念即可，不必理解引擎。

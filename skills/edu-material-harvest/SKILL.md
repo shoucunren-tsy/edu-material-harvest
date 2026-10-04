@@ -150,10 +150,10 @@ python scripts/mcp_server.py --print-config # 打印可粘贴的客户端连接�
 python scripts/mcp_server.py --install claude   # 一键写 Claude Code 配置（或 codex）
 ```
 
-- **工具**：`env_check` / `harvest_school`（一键）/ `harvest_many`（批量多校）/ `harvest_pages`（承载页直采）/
-  `discover_school` / `discover_pages_dry` / `download_materials` / `build_ledger` /
-  `read_artifacts` / `job_status` / `job_wait`。
-  长任务**异步**：工具立即回 `job_id`，用 `job_wait` 等终态摘要。
+- **工具**：`env_check` / `region_seeds`（地区名单）/ `harvest_school`（一键）/ `harvest_many`（批量多校）/
+  `harvest_pages`（承载页直采）/ `discover_school` / `discover_pages_dry` / `download_materials` /
+  `build_ledger` / `read_artifacts` / `job_status` / `job_wait`。
+  长任务**异步**：工具立即回 `job_id`，用 `job_wait` 等终态摘要；`env_check`/`region_seeds`/`build_ledger` 等**同步**即返。
 - **Resources/Prompts**：把手册（`edu://manual`、`edu://ref/*`）与"照念即用的调用配方"
   直接投喂给**模型更弱**的通用 Agent。
 - 技术/逻辑/思路（含 stdout 屏蔽的承重设计、后台任务模型、四个客户端的接入法）：

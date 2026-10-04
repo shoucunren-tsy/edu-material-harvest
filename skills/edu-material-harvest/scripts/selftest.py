@@ -220,6 +220,10 @@ def main():
              "params": {"name": "read_artifacts",
                         "arguments": {"out": os.path.join(d, "__none__"), "which": "candidates"}}},
             {"jsonrpc": "2.0", "id": 6, "method": "nope/method"},
+            {"jsonrpc": "2.0", "id": 7, "method": "tools/call",
+             "params": {"name": "region_seeds",
+                        "arguments": {"province": ["湖北"], "preset": "985",
+                                      "out": os.path.join(d, "_rs_selftest.json")}}},
         ]
         try:
             _lines, _raw, _err = _mcp_roundtrip(_msgs)
@@ -232,7 +236,7 @@ def main():
                 _parsed.append(_json.loads(l))
             except Exception:
                 _bad.append(l[:80])
-        t("mcp_all_lines_json", len(_lines) == 6 and not _bad)   # 6 条响应（通知不回）
+        t("mcp_all_lines_json", len(_lines) == 7 and not _bad)   # 7 条响应（通知不回）
         # 首行必须是 initialize 结果：证明 stdout 屏蔽生效（没有先前的 print 污染）
         t("mcp_first_line_is_initialize",
           bool(_parsed) and _parsed[0].get("id") == 1 and "serverInfo" in _parsed[0].get("result", {}))
@@ -243,7 +247,7 @@ def main():
         # tools/list：粗粒度工具齐（含一键 harvest_school 与 job_wait）
         _tools = {x["name"] for x in _by_id.get(2, {}).get("result", {}).get("tools", [])}
         t("mcp_tools_present",
-          {"env_check", "harvest_school", "harvest_many", "harvest_pages",
+          {"env_check", "region_seeds", "harvest_school", "harvest_many", "harvest_pages",
            "job_wait", "read_artifacts"} <= _tools)
         # initialize 回 instructions（弱客户端可据此照做）
         t("mcp_instructions_present",
@@ -262,6 +266,12 @@ def main():
           _r5.get("isError") is True and "未找到" in _r5.get("content", [{}])[0].get("text", ""))
         # 未知方法 → JSON-RPC error -32601，而非静默
         t("mcp_unknown_method_error", _by_id.get(6, {}).get("error", {}).get("code") == -32601)
+        # tools/call region_seeds：同步返回，输出内嵌「名单口径边界」与未匹配（军校）
+        _t7 = _by_id.get(7, {}).get("result", {})
+        _rs_txt = (_t7.get("content") or [{}])[0].get("text", "")
+        t("mcp_region_seeds_ok",
+          _t7.get("isError") is False and "名单口径" in _rs_txt
+          and "命中 2 校" in _rs_txt and "国防科技大学" in _rs_txt)
         # CLI 模式：--print-config 必须落真 stdout（曾因屏蔽把它吃到 stderr，`> f` 得空文件）
         try:
             _cp = _sp.run([sys.executable, os.path.join(HERE, "mcp_server.py"), "--print-config"],
