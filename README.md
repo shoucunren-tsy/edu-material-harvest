@@ -13,11 +13,27 @@
 
 ## 用法
 
-安装后，在 Claude Code 里说「帮我采集 XX 大学的培养方案」即可触发。也可直接跑脚本：
+在 Claude Code 里**直接说需求**即可——它会先联网核实每所学校的**官方域名**（绝不猜域名），再自动发现、逐份下载并出台账。例如：
+
+- 单校 · 某类材料：`帮我采集华中科技大学的年度报告`
+- 单校 · 四类全采：`把北京大学的培养方案、专业介绍、课程大纲、年度报告都采下来`
+- 承载页直采（站点栏目乱、全站爬容易采到假货时）：`只采这几个页面：<承载页 URL1> <承载页 URL2>`
+- 地区批量：`把湖南的 985 高校（中南大学、湖南大学、国防科技大学）的培养方案都采了，各校分开存`
+- 地区批量（211 / 双一流同理）：把名单换成你要的学校即可，不限省份
+
+⚠️ 三点如实说：① 能采到什么取决于该校是否有**官方免登录公开源**（站点被拦截或不可达时可能无果）；
+② 批量是**按你给的名单逐校做**，每校都会先核实域名——请先给出具体名单，别写"某地区所有高校"；
+③ 只采官方免登录源，不碰需要登录/付费的内容。
+
+也可直接跑脚本：
 
 ```
+# 单校
 python skills/edu-material-harvest/scripts/discover.py --school <校名> --domain <域名>          # 只侦察
 python skills/edu-material-harvest/scripts/discover.py --school <校名> --domain <域名> --auto   # 采集 + 出台账
+
+# 批量：照 skills/edu-material-harvest/references/schools_seed.example.json 写 schools_seed.json（每校一个先核实过的域名）
+python skills/edu-material-harvest/scripts/discover.py --seeds schools_seed.json --auto         # 逐校采集，各出到子目录
 ```
 
 ## 跨 Agent 可用（MCP）
