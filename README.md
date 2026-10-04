@@ -4,12 +4,34 @@
 **培养方案 / 专业介绍 / 课程大纲 / 年度报告**，逐份落盘并登记**可溯源台账**（下载直链 + 承载页）。
 适用于**任意中国高校，不限地域**。
 
-## 安装（Claude Code 插件）
+## 安装
+
+**前置**：本机要有 **Python 3**（采集引擎是 Python 脚本；Windows **不自带**，需先单独安装）和 **curl**
+（Win10 / 11 一般已自带）。
+
+### Claude Code（插件形态，最省事）
 
 ```
-/plugin marketplace add <本仓库 URL 或本地路径>
+/plugin marketplace add shoucunren-tsy/edu-material-harvest
 /plugin install edu-material-harvest@edu-material-harvest
 ```
+
+装完即可用——**MCP 会自动挂上**，无需再配。
+
+### Codex（插件形态）
+
+```
+codex plugin marketplace add git@github.com:shoucunren-tsy/edu-material-harvest.git
+codex plugin add edu-material-harvest@edu-material-harvest
+```
+
+> 这里用 SSH 地址，是因为国内直连 GitHub 的 HTTPS 常不稳；需本机已配好 GitHub SSH key。
+> 也可以用 MCP 方式接（见下），二选一。
+
+### 其它客户端（WorkBuddy / 千问办公 / Cursor / Cline / Claude Desktop …）
+
+下载或克隆本仓库后，按下面「跨 Agent 可用（MCP）」一节，跑一条命令拿到配置 JSON，粘进客户端的
+MCP 设置即可。
 
 ## 用法
 
