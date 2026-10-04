@@ -46,7 +46,18 @@ python skills/edu-material-harvest/scripts/discover.py --seeds seeds.json --auto
 除 Claude Code 外，Codex / WorkBuddy / 千问办公 / Claude Desktop / Cursor / Cline 等任何支持
 MCP 的客户端都能挂上**同一套采集能力**（工具、Resources、Prompts 齐全；长任务自动转后台，不会憋超时）。
 
-### 安装：把这段 JSON 贴进客户端的 MCP 配置
+### 安装：给支持 MCP 的客户端挂上这段配置
+
+**最省事的做法**：在本仓库根目录里跑一次下面这条命令，它会**打印一段已经填好你本机绝对路径的配置**，
+把打印出来的那段**整段复制、粘到客户端里**即可，不用自己改：
+
+```
+python skills/edu-material-harvest/scripts/mcp_server.py --print-config
+```
+
+---
+
+**如果你想自己写**，配置就长下面这样（下面这份是**已经填好的样子**，照着换成你自己的路径即可）：
 
 ```json
 {
@@ -54,38 +65,36 @@ MCP 的客户端都能挂上**同一套采集能力**（工具、Resources、Pro
     "edu-material-harvest": {
       "command": "python",
       "args": [
-        "<本仓库克隆到本地的绝对路径>/skills/edu-material-harvest/scripts/mcp_server.py"
+        "D:/github/edu-material-harvest/skills/edu-material-harvest/scripts/mcp_server.py"
       ]
     }
   }
 }
 ```
 
-按你的机器改两处：
+只有**两处**需要按你的机器改：
 
-- `command`：填 `python` 即可；**若客户端找不到 python**（客户端通常不继承你终端的 PATH），
-  换成解释器的**绝对路径**，例如 `C:/Python312/python.exe`。
-- `args[0]`：换成你 clone 后 `mcp_server.py` 的**绝对路径**（正斜杠 `/` 或反斜杠 `\\` 都行）。
+- **`command`**：写 `python` 就行。只有当客户端报「找不到 python」时才改——客户端通常不继承你终端的
+  PATH，改成 Python 的**绝对路径**，例如 `C:/Python312/python.exe`。
+- **`args` 里那条路径**：改成你本机 `mcp_server.py` 的绝对路径，也就是**你把本仓库下载/克隆到的那个
+  文件夹**，往下接 `skills/edu-material-harvest/scripts/mcp_server.py`。
+  Windows 建议用**正斜杠** `/`（像上面示例那样）；用反斜杠也行，但 JSON 里每个 `\` 都要写成 `\\`，容易写错。
 
-> **最省事的做法**：clone 后跑一次自带命令，它会**自动打印填好你本机绝对路径的同一段 JSON**，
-> 直接复制粘贴：
->
-> ```
-> python skills/edu-material-harvest/scripts/mcp_server.py --print-config
-> ```
->
-> 其中 Claude Code / Codex 还能一键写配置：
-> `--install claude`（或 `--install codex`），Codex 用 `codex mcp get edu-material-harvest` 验证。
+> ⚠️ 两个常见的坑：① 如果你手上的版本里路径带 `< >`，那是**占位符**，要**连尖括号一起换成真路径**，
+> 别把尖括号留在 JSON 里；② 路径写错会让客户端「连上却列不出工具」——**拿不准就直接用 `--print-config`
+> 打印的那份**，它不会错。
 
-各客户端入口一览：
+下面表格里说的「**那段 JSON**」= 上面那个 `mcpServers` 代码块（自己写、或复制 `--print-config` 打印的那份都行）。
 
-| 客户端 | 怎么装 |
-|---|---|
-| **Claude Code** | `python .../mcp_server.py --install claude`（或 `/plugin` 装插件自动挂载） |
-| **Codex** | `python .../mcp_server.py --install codex`，验证 `codex mcp get edu-material-harvest` |
-| **WorkBuddy** | 「连接器（MCP）」新建 stdio 服务器，填上面的 `command` / `args` |
-| **千问办公（QwenWork）** | 桌面端「扩展 → 连接器 → + 添加」→「**填写/粘贴 JSON 配置**」贴上上面的 JSON（或「**手动添加配置**」选 STDIO，填 `command`/`args`） |
-| **Claude Desktop / Cursor / Cline** | 在各自 MCP 配置里贴上面的 `mcpServers` JSON |
+各客户端怎么装——照着做，两列：**你要做的** / **怎么确认装好了**：
+
+| 客户端 | 你要做的 | 装好怎么看 |
+|---|---|---|
+| **Claude Code** | 在仓库目录里跑一条命令：`python skills/edu-material-harvest/scripts/mcp_server.py --install claude`（它自动帮你写好配置）。若你是用 `/plugin` 装的插件，**MCP 已自动挂上，什么都不用做**。 | 跑 `claude mcp list`，列表里出现 `edu-material-harvest` 即成功。 |
+| **Codex** | 同样跑一条命令：`python skills/edu-material-harvest/scripts/mcp_server.py --install codex` | 跑 `codex mcp get edu-material-harvest`，能打印出配置即可。 |
+| **WorkBuddy** | 打开「连接器（MCP）」→ 新建一个服务器，类型选 **stdio**（本地进程）；把**那段 JSON** 里的 `command` 填到「命令」栏、`args` 填到「参数」栏。 | 连接器列表里能看到它，并能展开出工具列表。 |
+| **千问办公（QwenWork）** | 桌面端「扩展 → 连接器 → + 添加」→ 选「**填写/粘贴 JSON 配置**」，把**那段 JSON 整段**粘进去；或选「**手动添加配置**」，类型选 **STDIO**，再分开填 `command`/`args`。**加完必须新建一个任务**才生效。 | 在「连接器 → 已安装 → 自定义」里能**展开出工具列表**才算真连上（右边的开关是开的 ≠ 已连接）。 |
+| **Claude Desktop / Cursor / Cline** | 打开它各自的 MCP 配置文件，把**那段 JSON** 粘进去，然后重启该客户端。 | 客户端里出现这批工具（`env_check`、`harvest_school` 等）。 |
 
 挂上后客户端里会出现 `env_check`、`region_seeds`（地区名单）、`harvest_school`（一键）、
 `harvest_many`（批量多校）、`harvest_pages`（承载页直采）、`build_ledger`、`read_artifacts`、

@@ -214,8 +214,7 @@ python scripts/mcp_server.py --print-config
 它会打印 `command`（Python 解释器绝对路径）与 `args`（脚本绝对路径），
 以及一段可直接粘贴的 `mcpServers` JSON。
 
-**要粘的 JSON 长这样**（把两处按你的机器改掉——`command` 若 `python` 不在 PATH 就换解释器
-绝对路径，`args[0]` 换成你 clone 后脚本的绝对路径）：
+**要粘的 JSON 长这样**（下面这份是**已经填好的样子**，照着换成你自己的路径即可；只有两处要改）：
 
 ```json
 {
@@ -223,21 +222,27 @@ python scripts/mcp_server.py --print-config
     "edu-material-harvest": {
       "command": "python",
       "args": [
-        "<仓库绝对路径>/skills/edu-material-harvest/scripts/mcp_server.py"
+        "D:/github/edu-material-harvest/skills/edu-material-harvest/scripts/mcp_server.py"
       ]
     }
   }
 }
 ```
 
-> 嫌手改麻烦：直接复制 `--print-config` 打出来的那份——它已把上面两处替换成本机绝对路径。
+- **`command`**：写 `python` 就行；只有客户端报「找不到 python」时才改成解释器**绝对路径**（如 `C:/Python312/python.exe`）。
+- **`args` 里那条路径**：改成你本机 `mcp_server.py` 的绝对路径 = 本仓库所在文件夹往下接 `skills/edu-material-harvest/scripts/mcp_server.py`。
+  Windows 建议用**正斜杠** `/`；用反斜杠也行，但 JSON 里每个 `\` 要写成 `\\`。
+- ⚠️ 路径里若带 `< >` 那是**占位符**，要连尖括号一起换成真路径；拿不准就直接用 `--print-config` 打印的那份，它不会错。
 
-| 客户端 | 接入方式 |
-|---|---|
-| **Claude Code** | `python scripts/mcp_server.py --install claude`；验证 `claude mcp list` |
-| **Codex** | `python scripts/mcp_server.py --install codex`；验证 `codex mcp get edu-material-harvest` |
-| **WorkBuddy** | 在「连接器（MCP）」新建 stdio 服务器，命令/参数填 `--print-config` 的 `command`/`args` |
-| **千问办公（QwenWork）** | 桌面端「**扩展 → 连接器 → + 添加**」→「**填写/粘贴 JSON 配置**」贴上面的 JSON；或「**手动添加配置**」选 **STDIO** 填 `command`/`args`。**添加后须新建任务才生效**，验证看「连接器 → 已安装 → 自定义」能展开出工具列表 |
+下面说的「那段 JSON」= 上面那个 `mcpServers` 代码块。照着做，两列：**你要做的** / **装好怎么看**：
+
+| 客户端 | 你要做的 | 装好怎么看 |
+|---|---|---|
+| **Claude Code** | 在仓库目录跑 `python scripts/mcp_server.py --install claude`（它自动写配置）。若用 `/plugin` 装插件，**MCP 已自动挂上，什么都不用做**。 | `claude mcp list` 里出现 `edu-material-harvest` |
+| **Codex** | 跑 `python scripts/mcp_server.py --install codex` | `codex mcp get edu-material-harvest` 能打印出配置 |
+| **WorkBuddy** | 打开「连接器（MCP）」→ 新建一个服务器，类型选 **stdio**（本地进程）；把 `command` 填到「命令」栏、`args` 填到「参数」栏。 | 连接器列表里能看到它，并能展开出工具列表 |
+| **千问办公（QwenWork）** | 桌面端「**扩展 → 连接器 → + 添加**」→ 选「**填写/粘贴 JSON 配置**」，把**那段 JSON 整段**粘进去；或选「**手动添加配置**」，类型选 **STDIO**，再分开填 `command`/`args`。**加完必须新建一个任务**才生效。 | 在「连接器 → 已安装 → 自定义」里能**展开出工具列表**才算真连上（开关是开的 ≠ 已连接） |
+| **Claude Desktop / Cursor / Cline** | 打开它各自的 MCP 配置文件，把**那段 JSON** 粘进去，重启该客户端。 | 客户端里出现这批工具 |
 
 装上后，客户端里会出现这些工具：`env_check`、`harvest_school`（一键）、`harvest_many`（批量多校）、
 `harvest_pages`（承载页直采）、`discover_school`、`read_artifacts`、`job_wait` 等。**长任务自动转后台**，不会把客户端憋超时。

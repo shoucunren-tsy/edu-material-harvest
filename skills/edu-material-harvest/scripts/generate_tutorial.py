@@ -230,24 +230,31 @@ def build():
     heading(doc, "九、在别的 Agent 里用（Claude Code / Codex / WorkBuddy / 千问办公）")
     para(doc, "这套采集能力不止 Claude Code 能用。它带一个零依赖的 MCP 服务，"
               "把同一套本事交给别的 Agent，你不需要额外安装任何东西。")
-    para(doc, "接入三步（以 Claude Code 为例）：")
-    for i, s in enumerate([
-        "在 skill 目录下运行：python scripts/mcp_server.py --print-config，"
-        "它会显示两行路径（解释器和脚本）。",
-        "接入：python scripts/mcp_server.py --install claude（Codex 用 --install codex，"
-        "WorkBuddy / 千问办公 用第一条打印出的信息在它们的“连接器 / MCP”里新建）。",
-        "在客户端里就能看到 harvest_school（一键采集）、harvest_pages（指定承载页采集）"
-        "等工具；说“采集 XX 大学的培养方案”即可。",
-    ], 1):
-        p = doc.add_paragraph()
-        r = p.add_run("%d. %s" % (i, s)); set_font(r)
-        p.paragraph_format.space_after = Pt(3)
+    para(doc, "先做一步（所有客户端都要）：在仓库目录里运行下面这条命令，"
+              "它会打印一段可直接粘贴的 JSON 配置，里面已经填好你本机的路径。", space_after=3)
+    bullet(doc, "python scripts/mcp_server.py --print-config")
+    para(doc, "各客户端怎么装（照着做）：", bold=True, space_after=4)
+    para(doc, "Claude Code：在仓库目录运行 python scripts/mcp_server.py --install claude，"
+              "它会自动帮你写好配置；若你是用 /plugin 装的插件，MCP 已经自动挂上，什么都不用做。"
+              "装好后运行 claude mcp list，列表里出现 edu-material-harvest 就成功了。", space_after=6)
+    para(doc, "Codex：运行 python scripts/mcp_server.py --install codex。"
+              "装好后运行 codex mcp get edu-material-harvest，能打印出配置即可。", space_after=6)
+    para(doc, "WorkBuddy：打开它的“连接器（MCP）”，新建一个服务器，类型选 stdio（本地进程），"
+              "把打印出来的 command 填到“命令”栏、args 填到“参数”栏。"
+              "列表里能看到它、能展开出工具，就算装好了。", space_after=6)
+    para(doc, "千问办公：桌面端“扩展 → 连接器 → + 添加”→ 选“填写/粘贴 JSON 配置”，"
+              "把打印出来的那段 JSON 整段粘进去（或选“手动添加配置”，类型选 STDIO，再分开填 command / args）。"
+              "注意：加完必须新建一个任务才生效；在“连接器 → 已安装 → 自定义”里能展开出工具列表，"
+              "才算真连上——开关是开的，不代表已经连上。", space_after=6)
+    para(doc, "Claude Desktop / Cursor / Cline：打开它各自的 MCP 配置文件，"
+              "把打印出来的那段 JSON 粘进去，然后重启该客户端。", space_after=10)
+    bullet(doc, "装上后，客户端里会出现 harvest_school（一键采集）、harvest_pages（指定承载页采集）"
+                "等工具；说“采集 XX 大学的培养方案”即可。")
     bullet(doc, "长任务会自动转后台：工具先返回一个任务号，稍等片刻再取结果，"
                 "不会把客户端卡到超时。")
     bullet(doc, "想让它更省心：把“某校挂着材料的那一页”网址直接告诉它，它就走精准直采，"
                 "比全站找更稳。")
-    para(doc, "注意：命令里的 Python 路径要与实际一致；若客户端找不到 Python，"
-              "就用 --print-config 打印的绝对路径。", size=10.5)
+    para(doc, "注意：若客户端找不到 Python，就用 --print-config 打印出的绝对路径。", size=10.5)
 
     # 十、在 DeepSeek Harness 里用
     heading(doc, "十、在 DeepSeek Harness 里用")
