@@ -44,7 +44,8 @@ description: |
 
 ```bash
 python scripts/discover.py --school <校名> --domain <域名>          # 只侦察（默认 dry-run）
-python scripts/discover.py --seeds schools_seed.json               # 批量
+python scripts/discover.py --seeds schools_seed.json               # 批量（名单自备）
+python scripts/region_seeds.py --province <省> --preset 985        # 地区批量：先生成名单（详见 references/10；名单仅普通高校，成人高校/军校口径见 §3.1）
 ```
 
 **入口 B · 指定承载页直采**（Agent 定位 + 脚本执行，等价手工 `enum_helpers` 路线）：
@@ -177,10 +178,13 @@ edu-material-harvest-高校公开资料采集（自己创作）/
 │   ├── 07-来源清单与模板.md      # 示例表 + 空白模板 + 新增一校四步 + 省级线索
 │   ├── 08-自动发现逻辑.md        # discover.py 的设计思路、判据、边界（"逻辑与技术"）
 │   ├── 09-Agent接入与MCP.md      # 跨 Agent 接入与 MCP：架构/协议/工具/排障（"怎么让别的 Agent 也用"）
+│   ├── 10-地区批量.md            # 省份/985·211 → 逐校：三层职责 + 两路域名 + 溯源 schema
+│   ├── data/                     # 地区批量数据：univ_list_2026-06-17.json + 985.json + 211.json
 │   └── schools_seed.example.json # 批量种子模板（复制成 schools_seed.json）
 └── scripts/
     ├── env.py                      # 外部工具唯一解析入口（7z/curl/powershell + 库探测）
     ├── common.py                   # 通用：下载/回收站/sha1/魔数/命名/编码/RAR（经 env）
+    ├── region_seeds.py             # 地区名单生成器（①层：省/城市/层次/985·211 → seeds，确定性、零依赖）
     ├── discover.py                 # 【核心】全自动发现：域名→子域→爬→枚举→实探确认→jobs
     ├── download.py                 # jobs.json → 下载+解压+去重 → records.json（幂等）
     ├── enum_helpers.py             # 抽页面链接 / 链式爬取 / 二级解析

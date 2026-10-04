@@ -32,8 +32,12 @@
 python skills/edu-material-harvest/scripts/discover.py --school <校名> --domain <域名>          # 只侦察
 python skills/edu-material-harvest/scripts/discover.py --school <校名> --domain <域名> --auto   # 采集 + 出台账
 
-# 批量：照 skills/edu-material-harvest/references/schools_seed.example.json 写 schools_seed.json（每校一个先核实过的域名）
+# 批量（自己给名单）：照 skills/edu-material-harvest/references/schools_seed.example.json 写 schools_seed.json
 python skills/edu-material-harvest/scripts/discover.py --seeds schools_seed.json --auto         # 逐校采集，各出到子目录
+
+# 地区批量（内置教育部高校名单，按 省/城市/层次/985·211 生成名单；域名由你上传或由 Agent 现搜）
+python skills/edu-material-harvest/scripts/region_seeds.py --province 湖北 --preset 985 --out seeds.json
+python skills/edu-material-harvest/scripts/discover.py --seeds seeds.json --auto
 ```
 
 ## 跨 Agent 可用（MCP）
@@ -54,6 +58,7 @@ python skills/edu-material-harvest/scripts/mcp_server.py --install claude # 或 
 - 安装接入与故障对照：`skills/edu-material-harvest/README-安装与接入.md`
 - 自动发现逻辑（设计思路 / 判据 / 边界）：`skills/edu-material-harvest/references/08-自动发现逻辑.md`
 - 跨 Agent 接入与 MCP（架构 / 协议 / 工具 / 排障）：`skills/edu-material-harvest/references/09-Agent接入与MCP.md`
+- 地区批量（省份/985·211 → 逐校，两路域名 + 溯源）：`skills/edu-material-harvest/references/10-地区批量.md`
 - 使用教程：`skills/edu-material-harvest/使用教程_高校公开资料采集.docx`
 
 ## 红线

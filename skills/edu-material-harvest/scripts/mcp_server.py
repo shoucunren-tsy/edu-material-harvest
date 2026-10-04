@@ -792,6 +792,7 @@ _RESOURCES = [
     ("edu://ref/07", "07-来源清单与模板.md", "来源清单：示例表 + 模板 + 新增一校四步", "text/markdown"),
     ("edu://ref/08", "08-自动发现逻辑.md", "自动发现引擎：判据 / 三重防线 / 边界（技术逻辑）", "text/markdown"),
     ("edu://ref/09", "09-Agent接入与MCP.md", "跨 Agent 接入与 MCP：架构 / 协议 / 工具 / 排障", "text/markdown"),
+    ("edu://ref/10", "10-地区批量.md", "地区批量：省/985·211 → 逐校；名单口径三分（普通高校 / 成人高校 / 军校）", "text/markdown"),
 ]
 
 
