@@ -190,9 +190,12 @@ def build():
          "工具会如实记下“被拦”，不会伪造数据，也不会硬闯。"),
         ("链接会不会失效？",
          "高校栏目常改版。台账里每条链接都是采集当天实测可达的；用之前建议再核一次。"),
-        ("能在其它 Agent（Codex、WorkBuddy、千问办公）里用吗？",
+        ("能在其它 Agent（Codex、WorkBuddy、千问办公、DeepSeek Harness）里用吗？",
          "能。本 skill 带一个零依赖的 MCP 服务，装一次即可让这些客户端用同一套采集能力"
-         "（见第八节）。不需要你额外安装 Python 包。"),
+         "（见第九节）。不需要你额外安装 Python 包。"),
+        ("DeepSeek Harness 里怎么装？",
+         "它和别的客户端不同——在 DSH 里 skill 和插件分开了：最快是把本工具整个文件夹"
+         "放进 DSH 的技能目录（见第十节）；也可在桌面版“设置 → 插件”里填本仓库地址一键装。"),
     ]
     for q, a in qa:
         para(doc, "Q：" + q, bold=True, space_after=2)
@@ -245,6 +248,24 @@ def build():
                 "比全站找更稳。")
     para(doc, "注意：命令里的 Python 路径要与实际一致；若客户端找不到 Python，"
               "就用 --print-config 打印的绝对路径。", size=10.5)
+
+    # 十、在 DeepSeek Harness 里用
+    heading(doc, "十、在 DeepSeek Harness 里用")
+    para(doc, "DeepSeek Harness（DSH）是 DeepSeek 官方的插件化 Agent，桌面版能从“设置 → 插件”里加东西。"
+              "它和别的客户端不同：在 DSH 里，skill 和插件是两套——skill 是给模型看的 Markdown 指令，"
+              "靠“放进技能目录”生效，不能用“添加插件”装；插件才是“添加插件”里那种包。本工具两种都备好了。")
+    para(doc, "方式一（最快）· 当 skill 用：把本工具的整个文件夹，复制到 DSH 的技能目录：")
+    bullet(doc, r"Windows 用户级：%USERPROFILE%\.dsh\skills\edu-material-harvest")
+    bullet(doc, r"或跨工具的共享目录：%USERPROFILE%\.agents\skills\edu-material-harvest")
+    para(doc, "放好即生效、不用重启。两条注意：目录名要保持 edu-material-harvest，"
+              "而且必须直接放在这一层（再往下套一层就不会被发现）。")
+    para(doc, "方式二 · 当插件用（GitHub 一键）：在桌面版“设置 → 插件 → 添加插件”里，"
+              "填本仓库的 GitHub 地址安装，装完重启即可。它也能从一个本地文件夹安装。")
+    para(doc, "方式三 · 走 MCP：把连接信息（那段 JSON）贴进 DSH 的 MCP 配置，"
+              "工具会以 mcp__ 开头出现。DSH 目前只认工具、不认资源手册——不过“名单口径”这类要点"
+              "已经写在工具返回里了，不会漏。")
+    para(doc, "依赖：DSH 自带 Python 3.12（出台账要用的库已含）。若缺 PDF 取名用的库，"
+              "文件名会退化为通用名，台账照常生成。")
 
     add_page_number_footer(doc)
     doc.save(OUT)

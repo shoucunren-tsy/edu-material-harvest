@@ -92,6 +92,16 @@ MCP 的客户端都能挂上**同一套采集能力**（工具、Resources、Pro
 `job_wait` 等工具。原理与四客户端接入法见：
 `skills/edu-material-harvest/references/09-Agent接入与MCP.md`
 
+## DeepSeek Harness（DSH）
+
+DSH 里 **skill 和 plugin 是两套东西**：skill 靠**目录发现**（不能用「添加插件」装），plugin 才是「添加插件」里那种包。本仓库两种形态都备好了：
+
+- **当 skill（最快、最稳）**：把 `skills/edu-material-harvest/` 复制到 `~/.dsh/skills/`（或跨 Agent 共享的 `~/.agents/skills/`）即可——**热重载、免重启**。规则：必须放在技能根**直属一层**、目录名 kebab-case。
+- **当 plugin（GitHub 一键）**：仓库根已带 DSH bundle 三件套（`package.json` + `cordis.patch.yml` + `lib/index.js`）。桌面版走**设置 → 插件 → 添加插件**填本仓库 GitHub 地址；CLI 可 `dsh plugin --profile web add "github:<用户>/edu-material-harvest"`（装完重启 profile）。
+- **走 MCP**：把上面的 `mcpServers` JSON 贴进 DSH 的 MCP 配置，工具以 `mcp__edu-material-harvest__*` 出现（DSH 只桥 **tools**，不认 resources/prompts）。
+
+详见：`skills/edu-material-harvest/references/11-DeepSeek-Harness接入.md`
+
 ## 详细文档
 
 - 安装接入与故障对照：`skills/edu-material-harvest/README-安装与接入.md`

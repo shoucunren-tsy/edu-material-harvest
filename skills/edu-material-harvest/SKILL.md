@@ -156,6 +156,10 @@ python scripts/mcp_server.py --install claude   # 一键写 Claude Code 配置�
   长任务**异步**：工具立即回 `job_id`，用 `job_wait` 等终态摘要；`env_check`/`region_seeds`/`build_ledger` 等**同步**即返。
 - **Resources/Prompts**：把手册（`edu://manual`、`edu://ref/*`）与"照念即用的调用配方"
   直接投喂给**模型更弱**的通用 Agent。
+- **DeepSeek Harness（DSH）**：DSH 里 skill 与 plugin 是两套——skill 靠**目录发现**（拷进
+  `~/.dsh/skills/`，不能用「添加插件」装），plugin 才走「添加插件」（仓库根已带 DSH bundle
+  三件套：`package.json` + `cordis.patch.yml` + `lib/index.js`）。DSH 只桥 MCP 的 **tools**、
+  不认 resources/prompts（边界文字已内嵌在 `region_seeds` 工具输出）。见 `references/11-DeepSeek-Harness接入.md`。
 - 技术/逻辑/思路（含 stdout 屏蔽的承重设计、后台任务模型、四个客户端的接入法）：
   见 `references/09-Agent接入与MCP.md`。
 
@@ -179,6 +183,7 @@ edu-material-harvest-高校公开资料采集（自己创作）/
 │   ├── 08-自动发现逻辑.md        # discover.py 的设计思路、判据、边界（"逻辑与技术"）
 │   ├── 09-Agent接入与MCP.md      # 跨 Agent 接入与 MCP：架构/协议/工具/排障（"怎么让别的 Agent 也用"）
 │   ├── 10-地区批量.md            # 省份/985·211 → 逐校：三层职责 + 两路域名 + 溯源 schema
+│   ├── 11-DeepSeek-Harness接入.md # DSH：skill vs plugin 两套装法 + MCP（只桥 tools）
 │   ├── data/                     # 地区批量数据：univ_list_2026-06-17.json + 985.json + 211.json
 │   └── schools_seed.example.json # 批量种子模板（复制成 schools_seed.json）
 └── scripts/
@@ -195,13 +200,15 @@ edu-material-harvest-高校公开资料采集（自己创作）/
     └── selftest.py                 # 自检（改动后跑一遍，全 PASS 才算无回退）
 ```
 
-> **仓库根另含 `.mcp.json`**：插件形态下声明内置 MCP 服务端（`${CLAUDE_PLUGIN_ROOT}` 展开），
-> `/plugin install` 时自动挂载。
+> **仓库根另含**：`.mcp.json`（Claude Code 插件形态声明内置 MCP 服务端，`${CLAUDE_PLUGIN_ROOT}` 展开，
+> `/plugin install` 时自动挂载）、`.claude-plugin/`、`.codex-plugin/` + `.agents/plugins/`（Codex 插件形态），
+> 以及 **DSH bundle 三件套** `package.json` + `cordis.patch.yml` + `lib/index.js`（DeepSeek Harness 插件形态，见 `references/11`）。
 
 > **全自动闭环**：`python scripts/discover.py --school <校> --domain <d> --auto`
 > （发现 → 下载 → 台账一条龙）。只侦察去掉 `--auto`；**指定承载页直采**加 `--page <URL>`（可重复）+ 可选 `--kind`。
 > **手工链**：`enum_helpers.py <栏目页>`（侦察）→ jobs.json → `download.py` → `report.py`。
 > **跨 Agent（MCP）**：`python scripts/mcp_server.py`（stdio 服务端）；
 > `--print-config` 出连接信息；`--install claude|codex` 一键接入。见 `references/09`。
+> **DeepSeek Harness**：拷进 `~/.dsh/skills/`（skill 形态，热重载）或在「添加插件」填本仓库（GitHub bundle 形态）。见 `references/11`。
 > **诊断**：`python scripts/env.py` 打印本机工具/库探测结果。
 > **自检**：`python scripts/selftest.py`（全 PASS 才算改动无回退）。
